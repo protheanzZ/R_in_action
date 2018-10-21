@@ -1,0 +1,45 @@
+---
+title: "IndependenceTest"
+output: html_notebook
+---
+---
+### Chisq.test()
+
+```{r}
+library(vcd)
+
+mytable <- xtabs(~Treatment + Improved, data=Arthritis)
+mytable
+```
+```{r}
+chisq.test(mytable)
+```
+```{r}
+mytable <- xtabs(~Improved + Sex, data=Arthritis)
+mytable
+chisq.test(mytable)
+```
+
+
+### Fisher's exact test: fisher.test()
+
+```{r}
+mytable <- xtabs(~Treatment + Improved, data=Arthritis)
+fisher.test(mytable)
+```
+
+### Cochran-Mantel-Haenszel Chi-squared Test:mantelhaen.test()
+```{r}
+mytable <- xtabs(~Treatment + Improved + Sex, data=Arthritis)
+mytable
+mantelhaen.test(mytable)
+```
+
+### Relativity
+#### Phi相关系数， 列联系数， Cramer's V系数
+```{r}
+mytable <- xtabs(~Treatment + Improved, data=Arthritis)
+mytable
+assocstats(mytable)
+```
+

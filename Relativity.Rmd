@@ -1,0 +1,52 @@
+---
+title: "Relativity"
+output: html_notebook
+---
+
+```{r}
+states <- state.x77[, 1:6]
+states[1:5,]
+```
+
+### Covariance 协方差 矩阵
+```{r}
+cov(states)
+```
+
+### Correlation coefficient 相关系数 矩阵
+#### Pearson
+```{r}
+cor(states)
+```
+
+#### Spearman
+```{r}
+cor(states, method='spearman')
+```
+### Partial correlation
+#### ggm package
+```{r}
+library(ggm)
+
+colnames(states)
+pcor(c(1, 5, 2, 3, 6), cov(states))
+```
+
+#### polycor package hetcor()
+```{r}
+library(polycor)
+hetcor(states)
+```
+
+### Significance test of correlation coefficient
+#### 每次只能检验一种相关系数
+```{r}
+cor.test(states[, 3], states[, 5])
+```
+
+#### corr.test() in psych package
+```{r}
+library(psych)
+corr.test(states, use='complete')
+```
+

@@ -1,0 +1,58 @@
+---
+title: "t-test and nonparametric test of differences between groups"
+output: html_notebook
+---
+### T-test
+#### T-test in dependent samples
+> 与其他多数统计软件不同的是，这里的t检验默认假定方差不相等，并使用Welsh的修正自由度。  
+> 使用参数var.equal=TRUE以假定方差相等，并使用合并方差估计。  
+> t.test(y~x) 中x必须是二分变量
+
+```{r}
+library(MASS)
+t.test(Prob ~ So, data=UScrime)
+```
+
+#### independent t-test
+```{r}
+apply(UScrime[c('U1', 'U2')], 2, function(x) (c(mean=mean(x), sd=sd(x))))
+with(UScrime, t.test(U1, U2, paired=TRUE))
+```
+
+* 多于两组，使用ANOVA
+
+### nonparametric test of differences between groups
+
+> 结果变量在本质上  
+
+#### Wilcoxon轶和检验(Mann-Whitney U检验)
+
+> 适用于两组独立的数据, 评估观测是否是从相同的概率分布中抽得的  
+
+```{r}
+with(UScrime, by(Prob, So, median))
+wilcox.test(Prob ~ So, data=UScrime)
+```
+
+#### Wilcoxon符号轶检验
+
+> 非独立样本，无法保证正态性假设的情境
+
+```{r}
+sapply(UScrime[c('U1', 'U2')], median)
+with(UScrime, wilcox.test(U1, U2, paired=TRUE))
+```
+
+#### 多于两组
+
+> 如果无法满足ANOVA的假设，可以使用Kruskal-Wallis非参数检验方法  
+  如果各组不独立，使用Friedman检验
+  
+```{r}
+states <- data.frame(state.region, state.x77)
+states
+kruskal.test(Illiteracy ~ state.region, data=states)
+```
+
+
+
