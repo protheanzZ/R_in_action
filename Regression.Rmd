@@ -137,5 +137,134 @@ sqrt(vif(fit)) > 2
 ```
 
 ### 异常值观测
-
 #### 离群点
+```{r}
+outlierTest(fit)
+```
+
+#### 高杠杆值
+自变量（观测点）就是异常的  
+帽子统计量(hat statistis)  
+若观测点的帽子值大于帽子均值的2或3倍，就可以认定为高杠杆值点  
+```{r}
+hat.plot <- function(fit) {
+  p <- length(coefficients(fit))
+  n <- length(fitted(fit))
+  plot(hatvalues(fit), main='Index Plot of Hat Values')
+  abline(h=c(2, 3)*p/n, col='red', lty=2)
+  identify(1:n, hatvalues(fit), names(hatvalues(fit)))
+}
+hat.plot(fit)
+```
+
+#### 强影响点
+Cook's D(D统计量) 变量添加图(added variable plot)
+```{r}
+cutoff <- 4 / (nrow(states) - length(fit$coefficients) - 2)
+plot(fit, which=4, cook.levels=cutoff)
+abline(h=cutoff, lty=2, col='red')
+```
+
+```{r}
+avPlots(fit, ask=FALSE, id.method='identify')
+```
+
+#### 整合
+```{r}
+influencePlot(fit, main='Influence Plot', 
+              sub='Circle size is proportional to Cook\'s distance')
+```
+
+
+### 改进措施
+#### Box-Cox 正太变换
+
+```{r}
+summary(powerTransform(states$Murder))
+```
+#### Box-Tidwell变换
+```{r}
+boxTidwell(Murder ~ Population + Illiteracy, data=states)
+```
+
+### 选择模型
+
+```{r}
+fit1 <- lm(Murder ~ Population + Illiteracy + Income + Frost, data=states)
+fit2 <- lm(Murder ~ Population + Illiteracy, data=states)
+anova(fit2, fit1)
+```
+
+#### 赤池信息准则 AIC(Akaike Information Criterion)
+```{r}
+AIC(fit2, fit1)
+```
+
+#### 逐步回归
+```{r}
+library(MASS)
+fit_ <- lm(Murder ~ 1, data=states)
+stepAIC(fit_, scope=Murder~Population+Illiteracy+Income+Frost, direction='forward')
+```
+
+#### 全子集回归
+leaps
+```{r}
+library(leaps)
+leaps <- regsubsets(Murder ~ Population + Illiteracy + Income + Frost, data=states, nbest=4)
+plot(leaps, scale='adjr2')
+
+library(car)
+subsets(leaps, statistic='cp', legend=c(3.5, 50),
+        main='Cp Plot for All Subsets Regression')
+abline(1, 1,lty=2, col='red')
+```
+
+### 交叉验证
+`crossval()` in bootstrap
+```{r}
+library(bootstrap)
+shrinkagae <- function(fit, k=10) {
+  theta.fit <- function(x, y) {lsfit(x, y)}
+  theta.predict <- function(fit, x) {cbind(1, x) %*% fit $coef}
+  
+  x <- fit$model[, 2:ncol(fit$model)]
+  y <- fit$model[, 1]
+  results <- crossval(x, y, theta.fit, theta.predict, ngroup=k)
+  r2 <- cor(y, fit$fitted.values) ^ 2
+  r2cv <- cor(y, results$cv.fit) ^ 2
+  cat('Origincal R-square =', r2, '\n')
+  cat(k, 'Fold Cross-Validated R-square =', r2cv, '\n')
+  cat('Change =', r2-r2cv, '\n')
+}
+
+shrinkagae(fit)
+cat('-------------\n')
+shrinkagae(lm(Murder ~ Population + Illiteracy, data=states))
+```
+
+#### 相对重要性
+
+```{r}
+zstates <- as.data.frame(scale(states))
+zfit <- lm(Murder ~ Population + Income + Illiteracy + Frost, data=zstates)
+coef(zfit)
+```
+
+`relweights()`
+```{r}
+relweights <- function(fit, ...){
+  R <- cor(fit$model)  # correlation matrix
+  nvar <- ncol(R)
+  rxx <- R[2:nvar, 2:nvar]
+  rxy <- R[2:nvar, 1]
+  
+  svd <- eigen(rxx) # eigenvalues and eigenvectors
+  evec <- svd$vectors
+  ev <- svd$values
+  
+  delta <- diag(sqrt(ev)) # construct diagonal matrix(对角线矩阵)
+  
+}
+```
+
