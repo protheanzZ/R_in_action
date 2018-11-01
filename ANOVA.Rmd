@@ -1,0 +1,111 @@
+---
+title: "ANOVA"
+output: html_notebook
+---
+
+### ANOVA model fitting
+`aov()`
+
+#### 单因素方差分析
+```{r}
+library(multcomp)
+attach(cholesterol)
+table(trt)
+
+aggregate(response, by=list(trt), FUN=mean)
+aggregate(response, by=list(trt), FUN=sd)
+```
+
+```{r}
+fit <- aov(response ~ trt)
+summary(fit)
+```
+
+```{r}
+library(gplots)
+plotmeans(response ~ trt, xlab='Treatment', ylab='Response', main='Mean Plot\nwith 95% CI')
+detach(cholesterol)
+```
+
+#### 多重比较
+```{r}
+TukeyHSD(fit)
+```
+
+```{r}
+par(las=2)
+par(mar=c(5, 8, 4, 2))
+plot(TukeyHSD(fit))
+```
+
+#### `glht()` in multcomp
+```{r}
+library(multcomp)
+par(mar=c(5, 4, 6, 2))
+tuk <- glht(fit, linfct=mcp(trt='Tukey'))
+plot(cld(tuk, level=.05), col='lightgrey')
+```
+#### 评估检验的假设条件
+```{r}
+library(car)
+qqPlot(lm(response ~ trt, data=cholesterol), simulate=TRUE, main='Q-Q Plot', labels=FALSE)
+```
+#### 方差齐性
+```{r}
+bartlett.test(response ~ trt, data=cholesterol)
+```
+
+#### 离群点
+```{r}
+library(car)
+outlierTest(fit)
+```
+
+### 单因素协方差分析(ANCOVA)
+```{r}
+data(litter, package='multcomp')
+attach(litter)
+table(dose)
+aggregate(weight, by=list(dose), FUN=mean)
+fit <- aov(weight ~ gesttime + dose)
+summary(fit)
+```
+
+#### 去除协变量 gesttime 后的组均值
+```{r}
+library(effects)
+effect('dose', fit)
+```
+
+#### 自定义的对照的多重比
+```{r}
+library(multcomp)
+contrast <- rbind('no drug vs. drug' = c(3, -1, -1, -1))
+summary(glht(fit, linfct=mcp(dose=contrast)))
+```
+
+#### 回归斜率的同质性
+ANCOVA还假定回归斜率相同，若交互效应显著，则意味着时间和幼崽出生体重间的关系依赖于药物剂量的水平。  
+```{r}
+library(multcomp)
+fit2 <- aov(weight ~ gesttime*dose, data=litter)
+summary(fit2)
+```
+> 交互项不显著，支持了回归斜率相同的假设
+
+```{r}
+library(HH)
+```
+
+### 双因素方差分析
+```{r}
+attach(ToothGrowth)
+table(supp, dose)
+aggregate(len, by=list(supp, dose), FUN=mean)
+aggregate(len, by=list(supp, dose), FUN=sd)
+dose <- factor(dose)
+fit <- aov(len ~ supp*dose)
+summary(fit)
+detach(ToothGrowth)
+```
+
