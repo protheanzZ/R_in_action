@@ -1,0 +1,74 @@
+---
+title: "Resample and Bootstrap"
+output: html_notebook
+---
+
+```{r}
+library(coin)
+score <- c(40, 57, 45, 55, 58, 57, 64, 55, 62, 65)
+treatment <- factor(c(rep('A', 5), rep('B', 5)))
+mydata <- data.frame(treatment, score)
+t.test(score~treatment, data=mydata, var.equal=TRUE)
+```
+
+```{r}
+oneway_test(score~treatment, data=mydata, distribution='exact')
+```
+
+```{r}
+library(MASS)
+UScrime <- transform(UScrime, So=factor(So))
+wilcox_test(Prob ~ So, data=UScrime, distribution='exact')
+wilcox.test(Prob ~ So, data=UScrime)
+```
+
+wilcox.test默认也是使用精确分布
+
+```{r}
+library(multcomp)
+set.seed(1234)
+oneway_test(response~trt, data=cholesterol, distribution=approximate(B=9999))
+```
+
+### chisq_test()
+```{r}
+library(coin)
+library(vcd)
+set.seed(1234)
+chisq_test(Treatment~Improved, data=Arthritis, distribution=approximate(B=9999))
+Arthritis <- transform(Arthritis, Improved=as.factor(as.numeric(Improved)))
+chisq_test(Treatment~Improved, data=Arthritis, distribution=approximate(B=9999))
+```
+
+### 数值变量间的独立性
+
+```{r}
+states <- as.data.frame(state.x77)
+set.seed(1234)
+spearman_test(Illiteracy~Murder, states, distribution=approximate(B=9999))
+```
+
+### K样本相关性
+```{r}
+library(coin)
+library(MASS)
+wilcoxsign_test(U1~U2, data=UScrime, distribution='exact')
+```
+
+# Bootstrap
+
+```{r}
+library(boot)
+rsq <- function(formula, data, indices){
+    d <- data[indices,]
+    fit <- lm(formula, data=d)
+    return(summary(fit)$r.square)
+}
+
+set.seed(1234)
+results <- boot(data=mtcars, statistic=rsq, R=1000, formula=mpg~wt+disp)
+print(results)
+plot(results)
+boot.ci(results, type=c('perc', 'bca'))
+```
+

@@ -9,3 +9,16 @@ if (!requireNamespace("BiocManager"))
 BiocManager::install()
 ```
 
+# DATA IMPORT
+```{r}
+library(xcms)
+library(faahKO)
+library(RColorBrewer)
+library(pander)
+library(magrittr)
+```
+
+```{r}
+cdfs <- dir(system.file('cdf'))
+```
+

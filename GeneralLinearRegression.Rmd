@@ -1,0 +1,92 @@
+---
+title: "GeneralLinearRegression"
+output: html_notebook
+---
+
+------
+
+# glm()
+## Logistic regression
+```{r}
+data(Affairs, package='AER')
+summary(Affairs)
+table(Affairs$affairs)
+```
+
+转化成二值型
+```{r}
+Affairs$ynaffair[Affairs$affairs>0] <- 1
+Affairs$ynaffair[Affairs$affairs == 0] <- 0
+Affairs$ynaffair <- factor(Affairs$ynaffair,
+                           levels=c(0, 1), 
+                           labels=c('No', 'Yes'))
+table(Affairs$ynaffair)
+```
+## Logistic re
+```{r}
+fit.full <- glm(ynaffair ~ gender + age + yearsmarried + children + religiousness + education + 
+                    occupation + rating, data=Affairs, family=binomial())
+summary(fit.full)
+```
+
+```{r}
+fit.reduced <- glm(ynaffair ~ age+yearsmarried+religiousness+rating, 
+                   data=Affairs, family=binomial())
+summary(fit.reduced)
+```
+
+模型评价
+```{r}
+anova(fit.reduced, fit.full, test='Chisq')
+```
+
+## Explain of model
+
+```{r}
+coef(fit.reduced)
+exp(coef(fit.reduced))
+```
+
+## Evaluate model
+
+```{r}
+testdata <- data.frame(rating=c(1,2,3,4,5), age=mean(Affairs$age), 
+                       yearsmarried=mean(Affairs$yearsmarried),
+                       religiousness=mean(Affairs$religiousness))
+testdata
+predict(fit.reduced, newdata=testdata, type='response')
+```
+
+## 过度离势
+当观测到的相应变量的方差大于期望的二项分布的方差，就称作**过度离势**，需要进行类二项分布转化。  
+```{r}
+## 检验是否过度离势
+deviance(fit.reduced) / df.residual(fit.reduced)
+```
+很接近1, 几乎没有过度离势  
+
+
+# Poisson regression
+
+```{r}
+library(robust)
+data(breslow.dat, package='robust')
+names(breslow.dat)
+summary(breslow.dat[c(6,7,8,10)])
+```
+
+```{r}
+opar <- par(no.readonly = TRUE)
+par(mfrow=c(1, 2))
+attach(breslow.dat)
+hist(sumY, breaks=20, xlab='Seizure Count', main='Distribution of Seizure')
+boxplot(sumY~Trt, xlab='Treatment', main='Group Comprisons')
+par(opar)
+```
+
+## fit Poisson
+```{r}
+fit <- glm(sumY ~ Base + Age + Trt, data=breslow.dat, family=poisson())
+summary(fit)
+```
+

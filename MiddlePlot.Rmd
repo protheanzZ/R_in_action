@@ -1,0 +1,195 @@
+---
+title: "MiddlePlot"
+output: html_notebook
+---
+
+# scatterPlot
+添加拟合曲线
+```{r}
+attach(mtcars)
+plot(wt, mpg, 
+     main='Basic Scatter',
+     xlab='Car Weight',
+     ylab='Miles Per Gallon')
+abline(lm(mpg~wt), col='red', lwd=2, lty=1)
+lines(lowess(wt, mpg), col='blue', lwd=2, lty=2)
+```
+## scatterplot() in car
+```{r}
+library(car)
+scatterplot(mpg ~ wt | cyl, data=mtcars, lwd=2, span=.75,
+            legend.plot=TRUE, id.method='identify', 
+            #labels=row.names(mtcars),
+            boxplots='xy')
+```
+
+## scatter matrix
+```{r}
+pairs(~mpg+disp+drat+wt, data=mtcars, 
+      main='Basic Scatter Plot Matrix')
+```
+```{r}
+library(car)
+scatterplotMatrix(~mpg+disp+drat+wt, data=mtcars,
+                  main='Scatter Plot Matrix via car package')
+```
+
+* even more: cpars() in glus package; pairs2() in TeachingDemos; xysplom() in HH; kepairs() in ResourceSeletion;pairs.mod() in SMPracticals
+
+```{r}
+
+```
+
+## high density scatterplot
+
+```{r}
+set.seed(1234)
+n <- 10000
+c1 <- matrix(rnorm(n, mean=0, sd=.5), ncol=2)
+c2 <- matrix(rnorm(n, mean=3, sd=2), ncol=2)
+mydata <- rbind(c1, c2)
+mydata <- as.data.frame(mydata)
+names(mydata) <- c('x', 'y')
+with(mydata, 
+     plot(x, y, pch=19, main='Scatter Plot'))
+```
+hard to decide the density  
+
+```{r}
+with(mydata, smoothScatter(x, y))
+```
+
+## hexbin()
+```{r}
+library(hexbin)
+with(mydata, {
+  bin <- hexbin(x, y, xbins=50)
+  plot(bin, main='Hexagonal Binning with 10,000 observations')
+})
+```
+get more examples by typing `?smoothScatter` or `?ipairs`  
+
+## 3d
+
+```{r}
+library(scatterplot3d)
+attach(mtcars)
+scatterplot3d(wt, disp, mpg,
+              pch=16, highlight.3d=TRUE,
+              type='h')
+```
+
+add regression plane  
+```{r}
+library(scatterplot3d)
+attach(mtcars)
+s3d <- scatterplot3d(wt, disp, mpg,
+              pch=16, highlight.3d=TRUE,
+              type='h')
+fit <- lm(mpg ~ wt+disp)
+s3d$plane3d(fit)
+```
+## rotatable scattplot3d
+```{r}
+library(rgl)
+attach(mtcars)
+plot3d(wt, disp, mpg, col='red', size=5)
+detach(mtcars)
+```
+
+```{r}
+library(car)
+with(mtcars, scatter3d(wt, disp, mpg))
+```
+
+## bubble plot
+```{r}
+attach(mtcars)
+r <- sqrt(disp/pi)
+symbols(wt, mpg, circle=r, inches=.30,
+        fg='white', bg='lightblue')
+text(wt, mpg, rownames(mtcars), cex=.6)
+```
+
+# line chart
+```{r}
+opar <- par(no.readonly = TRUE)
+par(mfrow=c(1,2))
+t1 <- subset(Orange, Tree==1)
+plot(t1$age, t1$circumference)
+plot(t1$age, t1$circumference, type='b')
+```
+
+```{r}
+Orange$Tree <- as.numeric(Orange$Tree)
+ntrees <- max(Orange$Tree)
+
+xrange <- range(Orange$age)
+yrange <- range(Orange$circumference)
+
+plot(xrange, yrange, type='n', xlab='Age (days)', ylab='Circumference (mm)')
+
+colors <- rainbow(ntrees)
+linetype <- c(1:ntrees)
+plotchar <- seq(18, 18+ntrees, 1)
+for (i in 1:ntrees) {
+  tree <- subset(Orange, Tree==i)
+  lines(tree$age, tree$circumference,
+        type='b', lwd=2, lty=linetype[i],
+        col=colors[i], pch=plotchar[i])
+}
+
+title("Tree Growth", 'example of line chart')
+legend(xrange[1], yrange[2],
+       1:ntrees, cex=.8, col=colors, pch=plotchar, lty=linetype, title='Tree')
+```
+
+# correlation plot
+```{r}
+options(digits=2)
+cor(mtcars)
+```
+
+```{r}
+library(corrgram)
+corrgram(mtcars, order=TRUE, lower.panel=panel.shade,
+         upper.panel=panel.pie, text.panel=panel.txt,
+         main='Corrgram of mtcars intercorrelations')
+```
+
+```{r}
+library(corrgram)
+corrgram(mtcars, order=TRUE, lower.panel=panel.ellipse,
+         upper.panel=panel.pts, text.panel=panel.txt,
+         diag.panel=panel.minmax,
+         main='Corrgram of mtcars data using scatter plots and ellipse')
+```
+
+```{r}
+library(corrgram)
+corrgram(mtcars, lower.panel = panel.shade,
+         upper.panel = NULL, text.panel=panel.txt,
+         main='Car Mileage Data')
+```
+
+```{r}
+library(corrgram)
+cols <- colorRampPalette(c('darkgoldenrod4', 'burlywood1', 'darkkhaki', 'darkgreen'))
+corrgram(mtcars, col.regions=cols,
+         lower.panel = panel.shade,
+         upper.panel = panel.conf, text.panel=panel.txt,
+         main='Car Mileage Data')
+```
+
+# Mosaic plot
+
+```{r}
+library(vcd)
+mosaic(Titanic, shade=TRUE, legend=TRUE)
+```
+
+```{r}
+library(vcd)
+mosaic(~Class+Sex+Age+Survived, data=Titanic, shade=TRUE, legend=TRUE)
+```
+
