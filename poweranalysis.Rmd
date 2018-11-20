@@ -1,0 +1,25 @@
+---
+title: "Power Analysis"
+output: 
+  html_notebook: 
+    fig_caption: yes
+---
+
+* 4个基本量： 功效（II型错误概率）、效应值、 样本大小、 显著性水平（alpha）
+### `pwr` package
+
+#### t-test
+`pwr.t.test` 两组中样本大小相等
+`pwr.t2n.test` 两组钟祥本大小不等
+```{r}
+library(pwr)
+pwr.t.test(d=.8, sig.level=.05, power=.9, type='two.sample', alternative='two.sided')
+```
+
+```{r}
+pwr.t2n.test(n1=100, d=.8, sig.level=.05, power=.9, alternative='two.sided')
+```
+* `powerSurvEpi` 流行病研究的生存分析中功效和样本量的计算
+* `powerMediation` 线性、Logistic、泊松和Cox回归的中介效应中功效和样本量的计算
+
+

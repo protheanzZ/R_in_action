@@ -190,3 +190,25 @@ outliers <- aq.plot(y)
 outliers
 ```
 
+```{r}
+library(rrcov)
+Wilks.test(y, shelf, method='mcd')
+```
+#### 回归做ANOVA
+
+```{r}
+library(multcomp)
+levels(cholesterol$trt)
+```
+* in `aov()`
+```{r}
+fit.aov <- aov(response ~ trt, data=cholesterol)
+summary(fit.aov)
+```
+* in `lm()`
+```{r}
+fit.lm <- lm(response ~ trt, data=cholesterol)
+summary(fit.lm)
+```
+
+

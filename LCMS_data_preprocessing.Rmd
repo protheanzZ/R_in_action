@@ -1,0 +1,11 @@
+---
+title: "LCMS data preprocessing"
+output: html_notebook
+---
+#### install Bioconductor
+```{r}
+if (!requireNamespace("BiocManager"))
+    install.packages("BiocManager")
+BiocManager::install()
+```
+
