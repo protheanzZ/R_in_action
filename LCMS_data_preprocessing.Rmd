@@ -2,13 +2,6 @@
 title: "LCMS data preprocessing"
 output: html_notebook
 ---
-#### install Bioconductor
-```{r}
-if (!requireNamespace("BiocManager"))
-    install.packages("BiocManager")
-BiocManager::install()
-```
-
 # DATA IMPORT
 ```{r}
 library(xcms)
@@ -19,6 +12,226 @@ library(magrittr)
 ```
 
 ```{r}
-cdfs <- dir(system.file('cdf'))
+## Get the full path to the CDF files
+cdfs <- dir(system.file("cdf", package = "faahKO"), full.names = TRUE,
+        recursive = TRUE)
+## Create a phenodata data.frame
+pd <- data.frame(sample_name = sub(basename(cdfs), pattern = ".CDF",
+                   replacement = "", fixed = TRUE),
+         sample_group = c(rep("KO", 6), rep("WT", 6)),
+         stringsAsFactors = FALSE) 
+```
+
+```{r}
+raw_data <- readMSData(files = cdfs, pdata = new("NAnnotatedDataFrame", pd),
+               mode = "onDisk")
+```
+
+```{r}
+head(rtime(raw_data))
+```
+
+```{r}
+mzs <- mz(raw_data)
+
+## Split the list by file
+mzs_by_file <- split(mzs, f = fromFile(raw_data))
+
+length(mzs_by_file)
+```
+
+```{r}
+## Get the base peak chromatograms. This reads data from the files.
+bpis <- chromatogram(raw_data, aggregationFun = "max")
+## Define colors for the two groups
+group_colors <- paste0(brewer.pal(3, "Set1")[1:2], "60")
+names(group_colors) <- c("KO", "WT")
+
+## Plot all chromatograms.
+plot(bpis, col = group_colors[raw_data$sample_group])
+```
+
+* bpis[1, i] i代表不同文件（样本） 1-12  返回chromatogram数据
+```{r}
+bpi_1 <- bpis[1, 1]
+head(rtime(bpi_1))
+```
+
+* plot中该点的intensity， 本例中是F01.S0001的max intensity
+```{r}
+head(intensity(bpi_1)) 
+```
+### EIC
+
+```{r}
+## Get the total ion current by file
+tc <- split(tic(raw_data), f = fromFile(raw_data))
+boxplot(tc, col = group_colors[raw_data$sample_group],
+    ylab = "intensity", main = "Total ion current") 
+```
+
+## Peak Detection 
+### CentWave algorithms ROI
+```{r}
+## Define the rt and m/z range of the peak area
+rtr <- c(2700, 2900)
+mzr <- c(334.9, 335.1)
+## extract the chromatogram
+chr_raw <- chromatogram(raw_data, mz = mzr, rt = rtr)
+plot(chr_raw, col = group_colors[chr_raw$sample_group])
+```
+
+> Note that Chromatogram objects extracted by the chromatogram method contain an NA value if in a certain scan (i.e. for a specific retention time) **no signal was measured in the respective mz range**. This is reflected by **the lines not being drawn as continuous lines **in the plot above.  
+
+```{r}
+raw_data %>%
+    filterRt(rt = rtr) %>%
+    filterMz(mz = mzr) %>%
+    plot(type = "XIC") 
+```
+
+```{r}
+cwp <- CentWaveParam(peakwidth = c(20, 80), noise = 5000, ppm=5)
+xdata <- findChromPeaks(raw_data, param = cwp) 
+```
+
+```{r}
+head(chromPeaks(xdata))
+tail(chromPeaks(xdata))
+table(chromPeaks(xdata)[,11])
+```
+
+```{r}
+summary_fun <- function(z) {
+    c(peak_count = nrow(z), rt = quantile(z[, "rtmax"] - z[, "rtmin"]))
+}
+T <- lapply(split.data.frame(chromPeaks(xdata),
+                 f = chromPeaks(xdata)[, "sample"]),
+        FUN = summary_fun)
+T <- do.call(rbind, T)
+rownames(T) <- basename(fileNames(xdata))
+pandoc.table(T,
+         caption = paste0("Summary statistics on identified chromatographic",
+                  " peaks. Shown are number of identified peaks per",
+                  " sample and widths/duration of chromatographic ",
+                  "peaks.")) 
+```
+
+```{r}
+plotChromPeaks(xdata, file = 3) 
+```
+
+```{r}
+plotChromPeakImage(xdata)
+```
+
+```{r}
+plot(chr_raw, col = group_colors[chr_raw$sample_group], lwd = 2)
+highlightChromPeaks(xdata, border = group_colors[chr_raw$sample_group],
+            lty = 3, rt = rtr, mz = mzr, type = "rect") 
+```
+
+```{r}
+plot(chr_raw, col = group_colors[chr_raw$sample_group], lwd = 2)
+highlightChromPeaks(xdata, col = group_colors[chr_raw$sample_group],
+            lty = 3, rt = rtr, mz = mzr, border = NA,
+            type = "polygon") 
+```
+
+```{r}
+plot(chr_raw, col = group_colors[chr_raw$sample_group], lwd = 2)
+highlightChromPeaks(xdata, col = group_colors[chr_raw$sample_group],
+            lty = 3, rt = rtr, mz = mzr,
+            type = "point") 
+```
+> Note that we can also specifically extract identified chromatographic peaks for a **selected region by providing the respective m/z and retention time ranges with the mz and rt arguments** in the  `chromPeaks` method.  
+
+```{r}
+pander(chromPeaks(xdata, mz = mzr, rt = rtr),
+       caption = paste("Identified chromatographic peaks in a selected ",
+               "m/z and retention time range.")) 
+```
+
+```{r}
+## Extract a list of per-sample peak intensities (in log2 scale)
+ints <- split(log2(chromPeaks(xdata)[, "into"]),
+          f = chromPeaks(xdata)[, "sample"])
+boxplot(ints, varwidth = TRUE, col = group_colors[xdata$sample_group],
+    ylab = expression(log[2]~intensity), main = "Peak intensities")
+grid(nx = NA, ny = NULL) 
+```
+
+## Alignment
+
+```{r}
+xdata <- adjustRtime(xdata, param = ObiwarpParam(binSize = 0.6)) 
+```
+
+```{r}
+head(adjustedRtime(xdata))
+head(rtime(xdata))
+```
+
+```{r}
+head(rtime(xdata, adjusted=FALSE))
+```
+
+```{r}
+## Get the base peak chromatograms.
+bpis_adj <- chromatogram(xdata, aggregationFun = "max")
+par(mfrow = c(2, 1), mar = c(4.5, 4.2, 1, 0.5))
+plot(bpis_adj, col = group_colors[bpis_adj$sample_group])
+## Plot also the difference of adjusted to raw retention time.
+plotAdjustedRtime(xdata, col = group_colors[xdata$sample_group]) 
+```
+
+```{r}
+hasAdjustedRtime(xdata)
+## Drop the alignment results.
+xdata <- dropAdjustedRtime(xdata)
+
+## Does the object have adjusted retention times?
+hasAdjustedRtime(xdata) 
+```
+
+```{r}
+## Correspondence: group peaks across samples.
+pdp <- PeakDensityParam(sampleGroups = xdata$sample_group,
+            minFraction = 0.8)
+xdata <- groupChromPeaks(xdata, param = pdp)
+
+## Now the retention time correction.
+pgp <- PeakGroupsParam(minFraction = 0.85)
+
+## Get the peak groups that would be used for alignment.
+xdata <- adjustRtime(xdata, param = pgp)
+```
+
+```{r}
+## Correspondence: group peaks across samples.
+pdp <- PeakDensityParam(sampleGroups = xdata$sample_group,
+            minFraction = 0.8)
+xdata <- groupChromPeaks(xdata, param = pdp)
+
+## Now the retention time correction.
+pgp <- PeakGroupsParam(minFraction = 0.85)
+
+## Get the peak groups that would be used for alignment.
+xdata <- adjustRtime(xdata, param = pgp)
+```
+
+```{r}
+## Plot the difference of adjusted to raw retention time.
+plotAdjustedRtime(xdata, col = group_colors[xdata$sample_group],
+          peakGroupsCol = "grey", peakGroupsPch = 1) 
+```
+```{r}
+par(mfrow = c(2, 1))
+## Plot the raw data
+plot(chr_raw, col = group_colors[chr_raw$sample_group])
+
+## Extract the chromatogram from the adjusted object
+chr_adj <- chromatogram(xdata, rt = rtr, mz = mzr)
+plot(chr_adj, col = group_colors[chr_raw$sample_group]) 
 ```
 
