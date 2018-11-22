@@ -235,3 +235,113 @@ chr_adj <- chromatogram(xdata, rt = rtr, mz = mzr)
 plot(chr_adj, col = group_colors[chr_raw$sample_group]) 
 ```
 
+## Correspondence
+
+```{r}
+## Define the mz slice.
+mzr <- c(305.05, 305.15)
+
+## Extract and plot the chromatograms
+chr_mzr <- chromatogram(xdata, mz = mzr, rt = c(2500, 4000))
+par(mfrow = c(3, 1), mar = c(1, 4, 1, 0.5))
+cols <- group_colors[chr_mzr$sample_group]
+plot(chr_mzr, col = cols, xaxt = "n", xlab = "")
+## Highlight the detected peaks in that region.
+highlightChromPeaks(xdata, mz = mzr, col = cols, type = "point", pch = 16)
+## Define the parameters for the peak density method
+pdp <- PeakDensityParam(sampleGroups = xdata$sample_group,
+            minFraction = 0.4, bw = 30)
+par(mar = c(4, 4, 1, 0.5))
+plotChromPeakDensity(xdata, mz = mzr, col = cols, param = pdp,
+             pch = 16, xlim = c(2500, 4000))
+## Use a different bw
+pdp <- PeakDensityParam(sampleGroups = xdata$sample_group,
+            minFraction = 0.4, bw = 20)
+plotChromPeakDensity(xdata, mz = mzr, col = cols, param = pdp,
+             pch = 16, xlim = c(2500, 4000)) 
+```
+
+```{r}
+## Perform the correspondence
+pdp <- PeakDensityParam(sampleGroups = xdata$sample_group,
+            minFraction = 0.4, bw = 20)
+xdata <- groupChromPeaks(xdata, param = pdp) 
+```
+
+The results from the correspondence can be extracted using the `featureDefinitions` method,  
+
+```{r}
+featureDefinitions(xdata)
+```
+
+```{r}
+## Extract the into column for each feature.
+head(featureValues(xdata, value = "into"))
+```
+
+```{r}
+## Filling missing peaks using default settings. Alternatively we could
+## pass a FillChromPeaksParam object to the method.
+xdata <- fillChromPeaks(xdata)
+
+head(featureValues(xdata, value="mz"))
+```
+> It should be mentioned that `fillChromPeaks` uses columns "rtmin", "rtmax", "mzmin" and  "mzmax" from the `featureDefinitions` table to define the region from which the signal should be integrated to generate the filled-in peak signal. These values correspond however to the positions of the **peak apex** not the peak boundaries of all chromatographic peaks assigned to a feature. It might be advisable to increase this area in retention time dimension by a constant value appropriate to the average peak width in the experiment. Such a value can be specified with  `fixedRt` of the `FillChromPeaksParam`. If the average peak width in the experiment is 20 seconds, specifying `fixedRt = 10` ensures that the area from which peaks are integrated is at least 20 seconds wide.
+
+```{r}
+apply(featureValues(xdata, filled = FALSE), MARGIN = 2,
+      FUN = function(z) sum(is.na(z)))
+apply(featureValues(xdata), MARGIN = 2,
+      FUN = function(z) sum(is.na(z)))
+```
+
+```{r}
+fcpp <- FillChromPeaksParam(fixedRt = 10)
+xdata <- fillChromPeaks(xdata, param = fcpp)
+head(featureValues(xdata, value="mz"))
+```
+
+```{r}
+apply(featureValues(xdata, filled = FALSE), MARGIN = 2,
+      FUN = function(z) sum(is.na(z)))
+apply(featureValues(xdata), MARGIN = 2,
+      FUN = function(z) sum(is.na(z)))
+```
+
+> Next we use the `featureSummary` function to get a general per-feature summary that includes the number of samples in which a peak was found or the number of samples in which more than one peak was assigned to the feature. Specifying also sample groups breaks down these summary statistics for each individual sample group.   
+
+```{r}
+head(featureSummary(xdata, group = xdata$sample_group))
+```
+
+```{r}
+feature_chroms <- featureChromatograms(xdata, features = 1:4)
+
+feature_chroms 
+par(mfrow = c(1, 2))
+plot(feature_chroms[3, ], col = group_colors[feature_chroms$sample_group])
+plot(feature_chroms[4, ], col = group_colors[feature_chroms$sample_group]) 
+```
+
+```{r}
+## Extract the features and log2 transform them
+ft_ints <- log2(featureValues(xdata, value = "into"))
+
+## Perform the PCA omitting all features with an NA in any of the
+## samples. Also, the intensities are mean centered.
+pc <- prcomp(t(na.omit(ft_ints)), center = TRUE)
+
+## Plot the PCA
+cols <- group_colors[xdata$sample_group]
+pcSummary <- summary(pc)
+plot(pc$x[, 1], pc$x[,2], pch = 21, main = "", 
+     xlab = paste0("PC1: ", format(pcSummary$importance[2, 1] * 100,
+                   digits = 3), " % variance"),
+     ylab = paste0("PC2: ", format(pcSummary$importance[2, 2] * 100,
+                   digits = 3), " % variance"),
+     col = "darkgrey", bg = cols, cex = 2)
+grid()
+text(pc$x[, 1], pc$x[,2], labels = xdata$sample_name, col = "darkgrey",
+     pos = 3, cex = 2)
+```
+
