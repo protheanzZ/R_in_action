@@ -2,3 +2,84 @@
 title: "PCA"
 output: html_notebook
 ---
+
+# PCA
+
+```{r}
+library(psych)
+```
+
+* Kaiser-Harris准则建议仅保留特征值大于1的主成分
+* Cattell碎石检验绘制了特征值与主成分数的关系
+* 平行分析（模拟）
+* `fa.parallel()` 可以同时对上述三种特征值判别准则进行评价 
+```{r}
+fa.parallel(USJudgeRatings[,-1], fa='pc', n.iter=100, show.legend=FALSE, main='Screen plot with parallel analysis')
+```
+
+# 提取主成分
+
+```{r}
+pc <- principal(USJudgeRatings[,-1], nfactors=1)
+pc
+```
+
+```{r}
+fa.parallel(Harman23.cor$cov, n.obs=302, fa='pc', n.iter=100, 
+            show.legend=FALSE, main='Screen plot with parallel analysis')
+```
+
+```{r}
+pc <- principal(Harman23.cor$cov, nfactors=2, rotate='none')
+pc
+```
+
+### 主成分旋转
+
+```{r}
+rc <- principal(Harman23.cor$cov, nfactors=2, rotate='varimax')
+rc
+```
+
+### 主成分得分
+
+```{r}
+pc <- principal(USJudgeRatings[,-1], nfactors=1, score=TRUE)
+pc
+head(pc$scores)
+cor(USJudgeRatings$CONT, pc$scores)
+```
+
+```{r}
+rc <- principal(Harman23.cor$cov, nfactors=2, rotate='varimax')
+round(unclass(rc$weights), 2)
+```
+# EFA
+
+```{r}
+covariances <- ability.cov$cov
+correlations <- cov2cor(covariances)
+correlations
+```
+
+```{r}
+fa.parallel(correlations, n.obs=112, fa='both', n.iter=100, 
+            main='Screen plots with parallel analysis')
+```
+
+```{r}
+fa.none <- fa(correlations, nfactors=2, rotate='none', fm='pa')
+fa.none
+```
+
+```{r}
+fa.varimax <- fa(correlations, nfactors=2, rotate='varimax', fm='pa')
+fa.varimax
+```
+
+
+```{r}
+fa.promax <- fa(correlations, nfactors=2, rotate='promax', fm='pa')
+fa.promax
+```
+
